@@ -1,6 +1,5 @@
-// src/PlanetCanvas.js
-import React, { useState, useEffect } from 'react';
-import { Stage, Layer, Circle, Line } from 'react-konva';
+import React, { useState, useEffect } from "react";
+import { Stage, Layer, Circle, Line } from "react-konva";
 
 const PlanetCanvas = () => {
   const [planets, setPlanets] = useState([
@@ -11,6 +10,13 @@ const PlanetCanvas = () => {
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [conqueredPaths, setConqueredPaths] = useState([]);
   const [movingDot, setMovingDot] = useState(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    }
+  }, []);
 
   const handlePlanetClick = (planet) => {
     setSelectedPlanet(planet);
@@ -26,12 +32,19 @@ const PlanetCanvas = () => {
   useEffect(() => {
     if (movingDot) {
       const interval = setInterval(() => {
-        setMovingDot(prev => {
+        setMovingDot((prev) => {
           const newProgress = prev.progress + 0.01;
           if (newProgress >= 1) {
             clearInterval(interval);
-            setConqueredPaths([...conqueredPaths, { from: prev.from, to: prev.to }]);
-            setPlanets(planets.map(p => p.id === prev.to.id ? { ...p, conquered: true } : p));
+            setConqueredPaths([
+              ...conqueredPaths,
+              { from: prev.from, to: prev.to },
+            ]);
+            setPlanets(
+              planets.map((p) =>
+                p.id === prev.to.id ? { ...p, conquered: true } : p
+              )
+            );
             return null;
           }
           return { ...prev, progress: newProgress };
@@ -49,16 +62,26 @@ const PlanetCanvas = () => {
 
   return (
     <div className="relative">
-      <Stage width={window.innerWidth} height={window.innerHeight} className="bg-black">
+      <Stage
+        width={dimensions.width}
+        height={dimensions.height}
+        className="bg-black"
+      >
         <Layer>
-          {planets.map(planet => (
+          {planets.map((planet) => (
             <Circle
               key={planet.id}
               x={planet.x}
               y={planet.y}
               radius={planet.radius}
-              fill={planet.conquered ? 'yellow' : (planet === selectedPlanet ? 'blue' : 'white')}
-              stroke={planet.id === 1 ? 'yellow' : 'none'}
+              fill={
+                planet.conquered
+                  ? "yellow"
+                  : planet === selectedPlanet
+                  ? "blue"
+                  : "white"
+              }
+              stroke={planet.id === 1 ? "yellow" : "none"}
               strokeWidth={planet.id === 1 ? 4 : 0}
               onClick={() => handlePlanetClick(planet)}
             />
@@ -74,8 +97,20 @@ const PlanetCanvas = () => {
           ))}
           {movingDot && (
             <Circle
-              x={calculateDotPosition(movingDot.from, movingDot.to, movingDot.progress).x}
-              y={calculateDotPosition(movingDot.from, movingDot.to, movingDot.progress).y}
+              x={
+                calculateDotPosition(
+                  movingDot.from,
+                  movingDot.to,
+                  movingDot.progress
+                ).x
+              }
+              y={
+                calculateDotPosition(
+                  movingDot.from,
+                  movingDot.to,
+                  movingDot.progress
+                ).y
+              }
               radius={5}
               fill="yellow"
             />
@@ -83,8 +118,8 @@ const PlanetCanvas = () => {
         </Layer>
       </Stage>
       {selectedPlanet && (
-        <button 
-          onClick={handleConquer} 
+        <button
+          onClick={handleConquer}
           className="absolute top-4 left-4 px-4 py-2 bg-green-500 text-white rounded-lg shadow-lg hover:bg-green-600"
         >
           Conquer
