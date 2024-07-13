@@ -1,9 +1,24 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Stage } from "react-konva";
 
 const CanvasWrapper = ({ children }) => {
   const [isDragging, setIsDragging] = useState(false);
   const stageRef = useRef(null);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setStageSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleWheel = (e) => {
     e.evt.preventDefault();
@@ -51,8 +66,8 @@ const CanvasWrapper = ({ children }) => {
 
   return (
     <Stage
-      width={window.innerWidth}
-      height={window.innerHeight}
+      width={stageSize.width}
+      height={stageSize.height}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
