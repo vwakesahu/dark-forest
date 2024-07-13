@@ -1,132 +1,204 @@
-import React, { useState, useEffect } from "react";
-import { Stage, Layer, Circle, Line } from "react-konva";
+import { Layer, Circle, Line } from "react-konva";
+import { useState, useEffect } from "react";
+import { TweenLite } from "gsap";
+import CanvasWrapper from "./canvas-wrapper";
 
-const PlanetCanvas = () => {
-  const [planets, setPlanets] = useState([
-    { id: 1, x: 100, y: 100, radius: 20, conquered: false },
-    { id: 2, x: 300, y: 200, radius: 30, conquered: false },
-    { id: 3, x: 500, y: 400, radius: 25, conquered: false },
-  ]);
+const Canvas = () => {
+  const [planets, setPlanets] = useState([]);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
-  const [conqueredPaths, setConqueredPaths] = useState([]);
-  const [movingDot, setMovingDot] = useState(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [capturedPlanets, setCapturedPlanets] = useState([]);
+  const [homePlanet, setHomePlanet] = useState({
+    x: 100,
+    y: 100,
+    attackingPower: 100,
+    defensePower: 100,
+  });
+  const [energy, setEnergy] = useState(141 + 10);
+  const [isAttacking, setIsAttacking] = useState(false);
+  const [animationCircle, setAnimationCircle] = useState(null);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
-    }
+    const initialPlanets = [
+      {
+        x: 200,
+        y: 200,
+        baseEnergy: 10,
+        captured: false,
+        attackingPower: 100,
+        defensePower: 100,
+      },
+      {
+        x: 300,
+        y: 400,
+        baseEnergy: 20,
+        captured: false,
+        attackingPower: 100,
+        defensePower: 100,
+      },
+    ];
+    setPlanets(initialPlanets);
   }, []);
 
-  const handlePlanetClick = (planet) => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCapturedPlanets((capturedPlanets) =>
+        capturedPlanets.map((planet) => ({
+          ...planet,
+          energy:
+            planet.energy + (planet.attackingPower + planet.defensePower) / 100,
+        }))
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleClick = (planet) => {
     setSelectedPlanet(planet);
   };
 
   const handleConquer = () => {
-    if (selectedPlanet) {
-      const myPlanet = planets[0]; // Assuming the first planet is 'my planet'
-      setMovingDot({ from: myPlanet, to: selectedPlanet, progress: 0 });
+    if (selectedPlanet && !isAttacking) {
+      const distance = Math.sqrt(
+        Math.pow(homePlanet.x - selectedPlanet.x, 2) +
+          Math.pow(homePlanet.y - selectedPlanet.y, 2)
+      );
+
+      if (
+        (distance * selectedPlanet.baseEnergy) / homePlanet.attackingPower <=
+        energy
+      ) {
+        setIsAttacking(true);
+        const animCircle = {
+          x: homePlanet.x,
+          y: homePlanet.y,
+          radius: 5,
+          fill: "red",
+        };
+        setAnimationCircle(animCircle);
+
+        TweenLite.to(animCircle, {
+          x: selectedPlanet.x,
+          y: selectedPlanet.y,
+          duration: 2,
+          onUpdate: () => {
+            setAnimationCircle({ ...animCircle });
+          },
+          onComplete: () => {
+            setAnimationCircle(null);
+            const requiredEnergy =
+              (distance *
+                selectedPlanet.baseEnergy *
+                selectedPlanet.defensePower) /
+              homePlanet.attackingPower;
+            if (requiredEnergy <= energy) {
+              setCapturedPlanets([
+                ...capturedPlanets,
+                { ...selectedPlanet, energy: 0 },
+              ]);
+              setPlanets(
+                planets.map((p) =>
+                  p === selectedPlanet ? { ...p, captured: true } : p
+                )
+              );
+              setEnergy(energy - requiredEnergy);
+            } else {
+              alert("Not enough energy to capture this planet!");
+            }
+            setIsAttacking(false);
+            setSelectedPlanet(null);
+          },
+        });
+      } else {
+        alert("Not enough energy to start the attack!");
+      }
     }
   };
 
-  useEffect(() => {
-    if (movingDot) {
-      const interval = setInterval(() => {
-        setMovingDot((prev) => {
-          const newProgress = prev.progress + 0.01;
-          if (newProgress >= 1) {
-            clearInterval(interval);
-            setConqueredPaths([
-              ...conqueredPaths,
-              { from: prev.from, to: prev.to },
-            ]);
-            setPlanets(
-              planets.map((p) =>
-                p.id === prev.to.id ? { ...p, conquered: true } : p
-              )
-            );
-            return null;
-          }
-          return { ...prev, progress: newProgress };
-        });
-      }, 16);
-      return () => clearInterval(interval);
-    }
-  }, [movingDot, conqueredPaths, planets]);
-
-  const calculateDotPosition = (from, to, progress) => {
-    const x = from.x + (to.x - from.x) * progress;
-    const y = from.y + (to.y - from.y) * progress;
-    return { x, y };
+  const increaseEnergy = () => {
+    setEnergy(energy + 50);
   };
 
   return (
     <div className="relative">
-      <Stage
-        width={dimensions.width}
-        height={dimensions.height}
-        className="bg-black"
-      >
+      <CanvasWrapper>
         <Layer>
-          {planets.map((planet) => (
+          <Circle
+            x={homePlanet.x}
+            y={homePlanet.y}
+            radius={20}
+            fill={"yellow"}
+          />
+          {planets.map((planet, index) => (
             <Circle
-              key={planet.id}
+              key={index}
               x={planet.x}
               y={planet.y}
-              radius={planet.radius}
-              fill={
-                planet.conquered
-                  ? "yellow"
-                  : planet === selectedPlanet
-                  ? "blue"
-                  : "white"
-              }
-              stroke={planet.id === 1 ? "yellow" : "none"}
-              strokeWidth={planet.id === 1 ? 4 : 0}
-              onClick={() => handlePlanetClick(planet)}
+              radius={20}
+              fill={planet.captured ? "blue" : "gray"}
+              stroke={selectedPlanet === planet ? "yellow" : "white"}
+              strokeWidth={planet.captured ? 3 : 1}
+              onClick={() => handleClick(planet)}
             />
           ))}
-          {conqueredPaths.map((path, index) => (
+          {selectedPlanet && (
             <Line
-              key={index}
-              points={[path.from.x, path.from.y, path.to.x, path.to.y]}
-              stroke="white"
+              points={[
+                homePlanet.x,
+                homePlanet.y,
+                selectedPlanet.x,
+                selectedPlanet.y,
+              ]}
+              stroke="red"
               strokeWidth={2}
-              dash={[10, 10]}
             />
-          ))}
-          {movingDot && (
+          )}
+          {animationCircle && (
             <Circle
-              x={
-                calculateDotPosition(
-                  movingDot.from,
-                  movingDot.to,
-                  movingDot.progress
-                ).x
-              }
-              y={
-                calculateDotPosition(
-                  movingDot.from,
-                  movingDot.to,
-                  movingDot.progress
-                ).y
-              }
-              radius={5}
-              fill="yellow"
+              x={animationCircle.x}
+              y={animationCircle.y}
+              radius={animationCircle.radius}
+              fill={animationCircle.fill}
             />
           )}
         </Layer>
-      </Stage>
+      </CanvasWrapper>
       {selectedPlanet && (
-        <button
-          onClick={handleConquer}
-          className="absolute top-4 left-4 px-4 py-2 bg-green-500 text-white rounded-lg shadow-lg hover:bg-green-600"
-        >
-          Conquer
-        </button>
+        <div className="absolute bottom-10 left-10 p-4 bg-gray-800 text-white rounded">
+          <h2>Planet Info</h2>
+          <p>
+            Distance:{" "}
+            {Math.sqrt(
+              Math.pow(homePlanet.x - selectedPlanet.x, 2) +
+                Math.pow(homePlanet.y - selectedPlanet.y, 2)
+            ).toFixed(2)}
+          </p>
+          <p>Base Energy: {selectedPlanet.baseEnergy}</p>
+          {selectedPlanet.captured && (
+            <>
+              <p>Defense Power: {selectedPlanet.defensePower}</p>
+              <p>Attacking Power: {selectedPlanet.attackingPower}</p>
+            </>
+          )}
+          <button
+            className="mt-2 px-4 py-2 bg-green-500 rounded"
+            onClick={handleConquer}
+          >
+            Conquer
+          </button>
+        </div>
       )}
+      <div className="absolute top-10 right-10 p-4 bg-gray-800 text-white rounded">
+        <h2>Player Energy: {energy}</h2>
+        <button
+          className="mt-2 px-4 py-2 bg-blue-500 rounded"
+          onClick={increaseEnergy}
+        >
+          Increase Energy
+        </button>
+      </div>
     </div>
   );
 };
 
-export default PlanetCanvas;
+export default Canvas;
