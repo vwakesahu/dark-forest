@@ -2,7 +2,7 @@ import { Layer, Circle, Line, Text } from "react-konva";
 import { useState, useEffect } from "react";
 import { TweenLite } from "gsap";
 import CanvasWrapper from "./canvas-wrapper";
-import { initialPlanets as dummyPlannets } from "@/utils/data";
+import { initialPlanets as dummyPlanets } from "@/utils/data";
 
 const Canvas = () => {
   const [planets, setPlanets] = useState([]);
@@ -14,13 +14,13 @@ const Canvas = () => {
     attackingPower: 100,
     defensePower: 100,
   });
-  const [energy, setEnergy] = useState(1000000000);
+  const [energy, setEnergy] = useState(1000);
   const [isAttacking, setIsAttacking] = useState(false);
   const [animationCircle, setAnimationCircle] = useState(null);
   const [selectedAttackingPlanet, setSelectedAttackingPlanet] = useState(null);
 
   useEffect(() => {
-    const initialPlanets = dummyPlannets;
+    const initialPlanets = dummyPlanets;
     setPlanets(initialPlanets);
     setCapturedPlanets([homePlanet]);
   }, []);
@@ -105,7 +105,7 @@ const Canvas = () => {
 
   return (
     <div className="relative">
-      <CanvasWrapper>
+      <CanvasWrapper homePlanet={homePlanet}>
         <Layer>
           {capturedPlanets.map((planet, index) => (
             <Circle

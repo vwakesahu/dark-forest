@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Stage } from "react-konva";
 
-const CanvasWrapper = ({ children }) => {
+const CanvasWrapper = ({ children, homePlanet }) => {
   const [isDragging, setIsDragging] = useState(false);
   const stageRef = useRef(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
@@ -17,8 +17,17 @@ const CanvasWrapper = ({ children }) => {
     handleResize();
     window.addEventListener("resize", handleResize);
 
+    if (stageRef.current && homePlanet) {
+      const stage = stageRef.current;
+      const scale = stage.scaleX();
+      const newX = stageSize.width / 2 - homePlanet.x * scale;
+      const newY = stageSize.height / 2 - homePlanet.y * scale;
+      stage.position({ x: newX, y: newY });
+      stage.batchDraw();
+    }
+
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [homePlanet, stageSize]);
 
   const handleWheel = (e) => {
     e.evt.preventDefault();
