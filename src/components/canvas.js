@@ -8,24 +8,42 @@ const Canvas = () => {
   const [planets, setPlanets] = useState([]);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [capturedPlanets, setCapturedPlanets] = useState([]);
+  const [timer, setTimer] = useState(2);
   const [homePlanet, setHomePlanet] = useState({
-    x: 0, // Adjusted to start at the left edge
-    y: window.innerHeight / 2,
+    x: 0,
+    y: typeof window !== "undefined" ? window.innerHeight / 2 : 0,
     attackingPower: 100,
+    baseEnergy: 100,
     defensePower: 100,
   });
-  const [energy, setEnergy] = useState(1000000);
+  const [energy, setEnergy] = useState(1000);
   const [isAttacking, setIsAttacking] = useState(false);
   const [animationCircle, setAnimationCircle] = useState(null);
   const [selectedAttackingPlanet, setSelectedAttackingPlanet] = useState(null);
 
   useEffect(() => {
     setPlanets(dummyPlanets);
-    setCapturedPlanets([homePlanet]); // Set the initial captured planets including homePlanet
+    setCapturedPlanets([homePlanet]);
+    setSelectedAttackingPlanet(homePlanet);
+    const interval = setInterval(() => {
+      setTimer((prevTimer) => prevTimer - 1);
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (timer === 0) {
+      alert("Timer reached zero! Resetting timer and performing action.");
+      setTimer(60);
+    }
+  }, [timer]);
+
   const handleClick = (planet) => {
-    setSelectedPlanet(planet);
+    if (planet.captured) {
+      setSelectedAttackingPlanet(planet);
+    } else {
+      setSelectedPlanet(planet);
+    }
   };
 
   const handleConquer = () => {
@@ -49,7 +67,7 @@ const Canvas = () => {
         x: selectedAttackingPlanet.x,
         y: selectedAttackingPlanet.y,
         radius: 5,
-        fill: approximateEnergy <= energy ? "green" : "red",
+        fill: approximateEnergy <= energy ? "white" : "red",
       };
       setAnimationCircle(animCircle);
 
@@ -84,52 +102,69 @@ const Canvas = () => {
   };
 
   const increaseEnergy = () => {
-    setEnergy(energy + 50);
+    setEnergy(energy + 10000);
   };
 
   return (
     <div className="relative">
       <CanvasWrapper homePlanet={homePlanet}>
         <Layer>
-          {/* Semi-circle on extreme left */}
-          <Arc
-            x={0}
-            y={window.innerHeight / 2}
-            innerRadius={0}
-            outerRadius={70}
-            rotation={-90}
-            angle={180}
-            fill="green"
-          />
           {/* Semi-circle on extreme right */}
           <Arc
-            x={window.innerWidth}
-            y={window.innerHeight / 2}
+            x={typeof window !== "undefined" ? window.innerWidth : 0}
+            y={typeof window !== "undefined" ? window.innerHeight / 2 : 0}
             innerRadius={0}
             rotation={90}
             outerRadius={70}
             angle={180}
-            fill="green"
+            fill="red"
+            shadowColor="red"
+            shadowBlur={150}
+            shadowOpacity={0.5}
           />
           {capturedPlanets.map((planet, index) => (
-            <Circle
-              key={index}
-              x={planet.x}
-              y={planet.y}
-              radius={index === 0 ? 70 : 20} // Fixed size for home planet, variable for others
-              fill={index === 0 ? "yellow" : "gray"} // Yellow for home planet, gray for others
-            />
+            <>
+              {index === 0 ? (
+                <Arc
+                  x={0}
+                  y={typeof window !== "undefined" ? window.innerHeight / 2 : 0}
+                  innerRadius={0}
+                  outerRadius={70}
+                  rotation={-90}
+                  angle={180}
+                  fill="yellow"
+                  shadowColor="yellow"
+                  shadowBlur={150}
+                  shadowOpacity={0.5}
+                  onClick={() => handleClick(planet)}
+                />
+              ) : (
+                <Circle
+                  key={index}
+                  x={planet.x}
+                  y={planet.y}
+                  radius={index === 0 ? 70 : 10 + planet.defensePower / 10}
+                  fill={"yellow"}
+                  shadowColor="yellow"
+                  shadowBlur={150}
+                  shadowOpacity={0.5}
+                />
+              )}
+            </>
           ))}
           {planets.map((planet, index) => (
             <Circle
               key={index}
               x={planet.x}
               y={planet.y}
-              radius={10 + planet.defensePower / 10}
-              fill={planet.captured ? "blue" : "gray"}
-              stroke={selectedPlanet === planet ? "yellow" : "white"}
+              radius={(10 + planet.defensePower + planet.attackingPower) / 10}
+              fill={planet.captured ? "yellow" : " lightblue"}
+              stroke={selectedPlanet === planet ? "blue" : "yellow"}
               strokeWidth={planet.captured ? 3 : 1}
               onClick={() => handleClick(planet)}
+              shadowColor="white"
+              shadowBlur={100}
+              shadowOpacity={0.5}
             />
           ))}
           {selectedPlanet && selectedAttackingPlanet && (
@@ -141,8 +176,8 @@ const Canvas = () => {
                   selectedPlanet.x,
                   selectedPlanet.y,
                 ]}
-                stroke="red"
-                strokeWidth={2}
+                stroke="lightblue"
+                strokeWidth={4}
               />
               <Text
                 x={(selectedAttackingPlanet.x + selectedPlanet.x) / 2}
@@ -151,14 +186,7 @@ const Canvas = () => {
                   Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
                     Math.pow(selectedAttackingPlanet.y - selectedPlanet.y, 2)
                 ).toFixed(2)} 
-                Approx. Energy: ${Math.ceil(
-                  (Math.sqrt(
-                    Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
-                      Math.pow(selectedAttackingPlanet.y - selectedPlanet.y, 2)
-                  ) *
-                    selectedPlanet.baseEnergy) /
-                    selectedAttackingPlanet.attackingPower
-                )}`}
+                `}
                 fontSize={15}
                 fill="white"
               />
@@ -209,16 +237,7 @@ const Canvas = () => {
         </button>
       </div>
       <div className="absolute top-10 left-10 p-4 bg-gray-800 text-white rounded">
-        <h2>Select Attacking Planet</h2>
-        {capturedPlanets.map((planet, index) => (
-          <button
-            key={index}
-            className="mt-2 px-4 py-2 bg-blue-500 rounded"
-            onClick={() => setSelectedAttackingPlanet(planet)}
-          >
-            Planet at ({planet.x}, {planet.y})
-          </button>
-        ))}
+        <h2>Timer: {timer} seconds</h2>
       </div>
     </div>
   );
