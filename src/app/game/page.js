@@ -1,7 +1,10 @@
 "use client";
-import Canvas from "@/components/canvas";
+// import Canvas from "@/components/canvas";
 import PlanetCanvas from "@/components/planet-canvas";
 import React from "react";
+import dynamic from "next/dynamic";
+
+const Canvas = dynamic(() => import("@/components/canvas"), { ssr: false });
 
 const Page = () => {
   return (
