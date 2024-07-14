@@ -1,22 +1,21 @@
 "use client";
 import Globe from "@/components/magicui/globe";
-import ShinyButton from "@/components/magicui/shiny-button";
 import { Button } from "@/components/ui/button";
-import { ArrowLeftIcon, LogOutIcon } from "lucide-react";
+import { LogOutIcon } from "lucide-react";
 import Link from "next/link";
-import React, { useState, useEffect } from "react";
+import React from "react";
 
-const bgImage = [
-  "/bgimg.png",
-  "/bgimg1.png",
-  "/bgimg2.png",
-  "/bgimg3.png",
-  "/bgimg4.png",
-  "/bgimg5.png",
-];
+// const bgImage = [
+//   "/bgimg.png",
+//   "/bgimg1.png",
+//   "/bgimg2.png",
+//   "/bgimg3.png",
+//   "/bgimg4.png",
+//   "/bgimg5.png",
+// ];
 
 const Page = () => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   //   useEffect(() => {
   //     const changeImage = (index) => {

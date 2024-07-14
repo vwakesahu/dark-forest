@@ -5,7 +5,7 @@ import React from "react";
 
 const Page = () => {
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-900">
+    <div className="flex items-center justify-center h-screen bg-black">
       {/* <PlanetCanvas /> */}
       <Canvas />
     </div>

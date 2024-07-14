@@ -1,5 +1,5 @@
-import { Layer, Circle, Line, Text } from "react-konva";
 import { useState, useEffect } from "react";
+import { Layer, Circle, Line, Text, Arc } from "react-konva";
 import { TweenLite } from "gsap";
 import CanvasWrapper from "./canvas-wrapper";
 import { initialPlanets as dummyPlanets } from "@/utils/data";
@@ -9,35 +9,19 @@ const Canvas = () => {
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [capturedPlanets, setCapturedPlanets] = useState([]);
   const [homePlanet, setHomePlanet] = useState({
-    x: 100,
-    y: 100,
+    x: 0, // Adjusted to start at the left edge
+    y: window.innerHeight / 2,
     attackingPower: 100,
     defensePower: 100,
   });
-  const [energy, setEnergy] = useState(1000);
+  const [energy, setEnergy] = useState(1000000);
   const [isAttacking, setIsAttacking] = useState(false);
   const [animationCircle, setAnimationCircle] = useState(null);
   const [selectedAttackingPlanet, setSelectedAttackingPlanet] = useState(null);
 
   useEffect(() => {
-    const initialPlanets = dummyPlanets;
-    setPlanets(initialPlanets);
-    setCapturedPlanets([homePlanet]);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCapturedPlanets((capturedPlanets) =>
-        capturedPlanets.map((planet) => ({
-          ...planet,
-          energy:
-            (planet.energy || 0) +
-            (planet.attackingPower + planet.defensePower) / 100,
-        }))
-      );
-    }, 1000);
-
-    return () => clearInterval(interval);
+    setPlanets(dummyPlanets);
+    setCapturedPlanets([homePlanet]); // Set the initial captured planets including homePlanet
   }, []);
 
   const handleClick = (planet) => {
@@ -107,13 +91,33 @@ const Canvas = () => {
     <div className="relative">
       <CanvasWrapper homePlanet={homePlanet}>
         <Layer>
+          {/* Semi-circle on extreme left */}
+          <Arc
+            x={0}
+            y={window.innerHeight / 2}
+            innerRadius={0}
+            outerRadius={70}
+            rotation={-90}
+            angle={180}
+            fill="green"
+          />
+          {/* Semi-circle on extreme right */}
+          <Arc
+            x={window.innerWidth}
+            y={window.innerHeight / 2}
+            innerRadius={0}
+            rotation={90}
+            outerRadius={70}
+            angle={180}
+            fill="green"
+          />
           {capturedPlanets.map((planet, index) => (
             <Circle
               key={index}
               x={planet.x}
               y={planet.y}
-              radius={20}
-              fill={"yellow"}
+              radius={index === 0 ? 70 : 20} // Fixed size for home planet, variable for others
+              fill={index === 0 ? "yellow" : "gray"} // Yellow for home planet, gray for others
             />
           ))}
           {planets.map((planet, index) => (
