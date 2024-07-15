@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Layer, Circle, Line, Text, Arc } from "react-konva";
+import React, { useState, useEffect } from "react";
+import { Layer, Circle, Line, Text, Arc, Group } from "react-konva";
 import { TweenLite } from "gsap";
 import CanvasWrapper from "./canvas-wrapper";
 import { initialPlanets as dummyPlanets } from "@/utils/data";
@@ -33,7 +33,7 @@ const Canvas = () => {
 
   useEffect(() => {
     if (timer === 0) {
-      alert("Timer reached zero! Resetting timer and performing action.");
+      // alert("Timer reached zero! Resetting timer and performing action.");
       setTimer(60);
     }
   }, [timer]);
@@ -123,7 +123,7 @@ const Canvas = () => {
             shadowOpacity={0.5}
           />
           {capturedPlanets.map((planet, index) => (
-            <>
+            <React.Fragment key={index}>
               {index === 0 ? (
                 <Arc
                   x={0}
@@ -139,34 +139,63 @@ const Canvas = () => {
                   onClick={() => handleClick(planet)}
                 />
               ) : (
-                <Circle
-                  key={index}
-                  x={planet.x}
-                  y={planet.y}
-                  radius={index === 0 ? 70 : 10 + planet.defensePower / 10}
-                  fill={"yellow"}
-                  shadowColor="yellow"
-                  shadowBlur={150}
-                  shadowOpacity={0.5}
-                />
+                <Group>
+                  <Circle
+                    x={planet.x}
+                    y={planet.y}
+                    radius={10 + planet.defensePower / 10 + 8} // Outer ring radius
+                    stroke={"yellow"} // Outer ring color
+                    strokeWidth={2} // Outer ring thickness
+                    fill={"transparent"} // Outer ring fill transparent
+                    shadowColor="yellow"
+                    shadowBlur={150}
+                    opacity={0.2}
+                    shadowOpacity={0.5}
+                  />
+                  <Circle
+                    x={planet.x}
+                    y={planet.y}
+                    radius={10 + planet.defensePower / 10}
+                    fill={"yellow"}
+                    shadowColor="yellow"
+                    shadowBlur={150}
+                    shadowOpacity={0.5}
+                  />
+                </Group>
               )}
-            </>
+            </React.Fragment>
           ))}
           {planets.map((planet, index) => (
-            <Circle
-              key={index}
-              x={planet.x}
-              y={planet.y}
-              radius={(10 + planet.defensePower + planet.attackingPower) / 10}
-              fill={planet.captured ? "yellow" : " lightblue"}
-              stroke={selectedPlanet === planet ? "blue" : "yellow"}
-              strokeWidth={planet.captured ? 3 : 1}
-              onClick={() => handleClick(planet)}
-              shadowColor="white"
-              shadowBlur={100}
-              shadowOpacity={0.5}
-            />
+            <Group key={index}>
+              <Circle
+                x={planet.x}
+                y={planet.y}
+                radius={
+                  (10 + planet.defensePower + planet.attackingPower) / 10 + 10
+                } // Outer ring radius
+                stroke={planet.captured ? "yellow" : "lightblue"} // Outer ring color
+                strokeWidth={2} // Outer ring thickness
+                fill={"transparent"} // Outer ring fill transparent
+                shadowColor="white"
+                shadowBlur={100}
+                shadowOpacity={0.5}
+                opacity={0.1}
+              />
+              <Circle
+                x={planet.x}
+                y={planet.y}
+                radius={(10 + planet.defensePower + planet.attackingPower) / 10}
+                fill={planet.captured ? "yellow" : "lightblue"}
+                stroke={selectedPlanet === planet ? "blue" : "yellow"}
+                strokeWidth={planet.captured ? 3 : 1}
+                onClick={() => handleClick(planet)}
+                shadowColor="white"
+                shadowBlur={100}
+                shadowOpacity={0.5}
+              />
+            </Group>
           ))}
+
           {selectedPlanet && selectedAttackingPlanet && (
             <>
               <Line
@@ -193,12 +222,19 @@ const Canvas = () => {
             </>
           )}
           {animationCircle && (
-            <Circle
+            <Text
               x={animationCircle.x}
               y={animationCircle.y}
-              radius={animationCircle.radius}
-              fill={animationCircle.fill}
+              text={`🚀`}
+              fontSize={32}
+              fill="white"
             />
+            // <Circle
+            //   x={animationCircle.x}
+            //   y={animationCircle.y}
+            //   radius={animationCircle.radius}
+            //   fill={animationCircle.fill}
+            // />
           )}
         </Layer>
       </CanvasWrapper>
