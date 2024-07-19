@@ -1,8 +1,7 @@
-import { useRef, useState, useEffect } from "react";
-import { Stage } from "react-konva";
+const { useState, useRef, useEffect } = require("react");
 
 const CanvasWrapper = ({ children }) => {
-  const stageRef = useRef(null);
+  const canvasRef = useRef(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -17,13 +16,17 @@ const CanvasWrapper = ({ children }) => {
     window.addEventListener("resize", handleResize);
 
     return () => window.removeEventListener("resize", handleResize);
-  }, [stageSize]);
+  }, []);
 
   return (
-    <Stage width={stageSize.width} height={stageSize.height} ref={stageRef}>
-      {children}
-    </Stage>
+    <canvas
+      ref={canvasRef}
+      width={stageSize.width}
+      height={stageSize.height}
+      style={{ display: "block" }}
+    >
+      {children(canvasRef.current)}
+    </canvas>
   );
 };
-
 export default CanvasWrapper;
