@@ -1,32 +1,15 @@
-const { useState, useRef, useEffect } = require("react");
+import React, { useRef, useEffect } from "react";
 
 const CanvasWrapper = ({ children }) => {
   const canvasRef = useRef(null);
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const handleResize = () => {
-      setStageSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
+    if (canvasRef.current) {
+      children(canvasRef.current);
+    }
+  }, [children]);
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={stageSize.width}
-      height={stageSize.height}
-      style={{ display: "block" }}
-    >
-      {children(canvasRef.current)}
-    </canvas>
-  );
+  return <canvas ref={canvasRef} width={window.innerWidth} height={window.innerHeight} />;
 };
+
 export default CanvasWrapper;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import CanvasWrapper from "./canvas-wrapper";
 import { initialPlanets as dummyPlanets } from "@/utils/data";
+import { conquerCalculation } from "@/utils/calculations";
 
 const Canvas = () => {
   const [planets, setPlanets] = useState([]);
@@ -41,17 +42,32 @@ const Canvas = () => {
     const y = event.clientY - rect.top;
 
     let clickedPlanet = null;
-    planets.forEach((planet) => {
-      const distance = Math.sqrt(
-        Math.pow(planet.x - x, 2) + Math.pow(planet.y - y, 2)
-      );
-      if (distance < (10 + planet.defensePower + planet.attackingPower) / 10) {
-        clickedPlanet = planet;
-      }
-    });
+
+    // Check if the home planet was clicked
+    const homeDistance = Math.sqrt(
+      Math.pow(homePlanet.x - x, 2) + Math.pow(homePlanet.y - y, 2)
+    );
+    if (homeDistance < 70) {
+      clickedPlanet = homePlanet;
+    }
+
+    // Check other planets if home planet was not clicked
+    if (!clickedPlanet) {
+      planets.forEach((planet) => {
+        const distance = Math.sqrt(
+          Math.pow(planet.x - x, 2) + Math.pow(planet.y - y, 2)
+        );
+        if (
+          distance <
+          (10 + planet.defensePower + planet.attackingPower) / 10
+        ) {
+          clickedPlanet = planet;
+        }
+      });
+    }
 
     if (clickedPlanet) {
-      if (clickedPlanet.captured) {
+      if (clickedPlanet.captured || clickedPlanet === homePlanet) {
         setSelectedAttackingPlanet(clickedPlanet);
       } else {
         setSelectedPlanet(clickedPlanet);
@@ -61,20 +77,10 @@ const Canvas = () => {
 
   const handleConquer = () => {
     if (selectedPlanet && selectedAttackingPlanet && !isAttacking) {
-      const distance = Math.sqrt(
-        Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
-          Math.pow(selectedAttackingPlanet.y - selectedPlanet.y, 2)
+      const { approximateEnergy, actualRequiredEnergy } = conquerCalculation(
+        selectedAttackingPlanet,
+        selectedPlanet
       );
-
-      const approximateEnergy = Math.ceil(
-        (distance * selectedPlanet.baseEnergy) /
-          selectedAttackingPlanet.attackingPower
-      );
-
-      const actualRequiredEnergy =
-        (distance * selectedPlanet.baseEnergy * selectedPlanet.defensePower) /
-        selectedAttackingPlanet.attackingPower;
-
       setIsAttacking(true);
       const animCircle = {
         x: selectedAttackingPlanet.x,
@@ -130,7 +136,7 @@ const Canvas = () => {
   };
 
   const increaseEnergy = () => {
-    setEnergy(energy + 10000);
+    setEnergy(energy + 10000000000);
   };
 
   const draw = (canvas, ctx) => {
@@ -155,7 +161,7 @@ const Canvas = () => {
 
     // Draw captured planets
     capturedPlanets.forEach((planet, index) => {
-      if (index === 0) {
+      if (planet === homePlanet) {
         ctx.beginPath();
         ctx.arc(
           0,
@@ -268,13 +274,15 @@ const Canvas = () => {
       ctx.beginPath();
       ctx.moveTo(selectedAttackingPlanet.x, selectedAttackingPlanet.y);
       ctx.lineTo(selectedPlanet.x, selectedPlanet.y);
-      ctx.strokeStyle = "lightblue";
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 1;
       ctx.stroke();
       ctx.closePath();
 
+      // Draw distance text
       ctx.fillStyle = "white";
-      ctx.font = "15px Arial";
+      ctx.font = "14px Arial";
       ctx.fillText(
         `Distance: ${Math.sqrt(
           Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
