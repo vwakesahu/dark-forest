@@ -5,43 +5,8 @@ import { LogOutIcon } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
-// const bgImage = [
-//   "/bgimg.png",
-//   "/bgimg1.png",
-//   "/bgimg2.png",
-//   "/bgimg3.png",
-//   "/bgimg4.png",
-//   "/bgimg5.png",
-// ];
-
 const Page = () => {
-  // const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  //   useEffect(() => {
-  //     const changeImage = (index) => {
-  //       setCurrentImageIndex(index);
-  //     };
-
-  //     const cycleImages = () => {
-  //       let index = 0;
-  //       const interval = setInterval(() => {
-  //         index = (index + 1) % bgImage.length;
-  //         changeImage(index);
-  //       }, 200); // Change image every 1 second
-  //       return () => clearInterval(interval);
-  //     };
-
-  //     cycleImages();
-  //   }, []);
-
   return (
-    // <div className="h-screen w-screen overflow-hidden">
-    //   {/* <img
-    //     src={bgImage[currentImageIndex]}
-    //     className="h-full w-full object-cover"
-    //   /> */}
-    //   <Globe />
-    // </div>
     <div className="h-screen relative bg-background flex flex-col items-center justify-center">
       <img
         src={"/bgimg.png"}

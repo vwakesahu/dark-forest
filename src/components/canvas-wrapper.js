@@ -9,7 +9,13 @@ const CanvasWrapper = ({ children }) => {
     }
   }, [children]);
 
-  return <canvas ref={canvasRef} width={window.innerWidth} height={window.innerHeight} />;
+  return (
+    <canvas
+      ref={canvasRef}
+      width={window.innerWidth}
+      height={window.innerHeight}
+    />
+  );
 };
 
 export default CanvasWrapper;

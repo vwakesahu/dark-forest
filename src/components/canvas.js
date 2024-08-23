@@ -1,9 +1,31 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CanvasWrapper from "./canvas-wrapper";
-import { initialPlanets as dummyPlanets } from "@/utils/data";
+import { initialPlanets, homePlanetImage } from "@/utils/data";
 import { conquerCalculation } from "@/utils/calculations";
+import {
+  Rocket,
+  Zap,
+  Shield,
+  Crosshair,
+  Star,
+  Globe,
+  Clock,
+  Award,
+} from "lucide-react";
 
 const Canvas = () => {
+  const backgroundStars = useRef([]);
+  const canvasRef = useRef(null);
+  const colors = {
+    background: "#0A0E29",
+    stars: ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1"],
+    homePlanet: "#FF5733",
+    capturedPlanet: "#4CAF50",
+    uncapturedPlanet: "#3498DB",
+    selectedPlanet: "#FFC300",
+    energyBar: "#2ECC71",
+    text: "#FFFFFF",
+  };
   const [planets, setPlanets] = useState([]);
   const [selectedPlanet, setSelectedPlanet] = useState(null);
   const [capturedPlanets, setCapturedPlanets] = useState([]);
@@ -19,11 +41,68 @@ const Canvas = () => {
   const [isAttacking, setIsAttacking] = useState(false);
   const [animationCircle, setAnimationCircle] = useState(null);
   const [selectedAttackingPlanet, setSelectedAttackingPlanet] = useState(null);
+  const [rocketPosition, setRocketPosition] = useState(null);
+  const [explosion, setExplosion] = useState(null);
+
+  const animationFrameRef = useRef();
+  const [frameCount, setFrameCount] = useState(0);
+  const planetImages = useRef({});
+  const rocketImage = useRef(null);
+  const explosionImage = useRef(null);
 
   useEffect(() => {
-    setPlanets(dummyPlanets);
+    backgroundStars.current = Array(100)
+      .fill()
+      .map(() => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 0.5 + 0.1,
+      }));
+
+    const animate = () => {
+      setFrameCount((prevCount) => (prevCount + 1) % 60);
+      animateBackgroundStars();
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+    animate();
+    rocketImage.current = new Image();
+    rocketImage.current.src = "/images/rocket.png";
+    explosionImage.current = new Image();
+    explosionImage.current.src = "/images/explosion.gif";
+
+    return () => cancelAnimationFrame(animationFrameRef.current);
+  }, []);
+  const animateBackgroundStars = () => {
+    backgroundStars.current = backgroundStars.current.map((star) => ({
+      ...star,
+      y: (star.y + star.speed) % window.innerHeight,
+    }));
+  };
+  const drawBackgroundStars = (ctx) => {
+    backgroundStars.current.forEach((star) => {
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.5 + 0.5})`;
+      ctx.beginPath();
+      ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  };
+
+  useEffect(() => {
+    setPlanets(initialPlanets);
     setCapturedPlanets([homePlanet]);
     setSelectedAttackingPlanet(homePlanet);
+
+    // Preload planet images
+    initialPlanets.forEach((planet) => {
+      const img = new Image();
+      img.src = planet.image;
+      planetImages.current[planet.image] = img;
+    });
+    const homeImg = new Image();
+    homeImg.src = homePlanetImage;
+    planetImages.current[homePlanetImage] = homeImg;
+
     const interval = setInterval(() => {
       setTimer((prevTimer) => prevTimer - 1);
     }, 1000);
@@ -32,9 +111,84 @@ const Canvas = () => {
 
   useEffect(() => {
     if (timer === 0) {
-      setTimer(60);
+      // Game over logic
+      alert("Game Over! Your final score: " + capturedPlanets.length);
+      // Reset game state here
     }
   }, [timer]);
+  console.log(initialPlanets);
+
+  const drawPlanet = (ctx, planet, isSelected, isCaptured) => {
+    const baseRadius = (20 + planet.defensePower + planet.attackingPower) / 8;
+    const animatedRadius = baseRadius + Math.sin(frameCount * 0.035) * 2;
+
+    ctx.globalAlpha = isCaptured ? 1 : 0.8;
+
+    // Draw planet glow
+    ctx.beginPath();
+    ctx.arc(planet.x, planet.y, animatedRadius + 5, 0, Math.PI * 2);
+    ctx.fillStyle = isCaptured
+      ? colors.capturedPlanet
+      : colors.uncapturedPlanet;
+    ctx.filter = "blur(5px)";
+    ctx.fill();
+    ctx.filter = "none";
+
+    // Draw the planet image
+    const img = planetImages.current[planet.image];
+    if (img) {
+      ctx.drawImage(
+        img,
+        planet.x - animatedRadius,
+        planet.y - animatedRadius,
+        animatedRadius * 2,
+        animatedRadius * 2
+      );
+    }
+
+    // Draw selection indicator
+    if (isSelected) {
+      ctx.strokeStyle = colors.selectedPlanet;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(
+        planet.x - animatedRadius - 5,
+        planet.y - animatedRadius - 5,
+        (animatedRadius + 5) * 2,
+        (animatedRadius + 5) * 2
+      );
+      ctx.setLineDash([]);
+    }
+
+    // Draw energy bar
+    const energyPercentage = planet.energy / planet.baseEnergy;
+    const barWidth = animatedRadius * 2;
+    const barHeight = 6;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(
+      planet.x - animatedRadius,
+      planet.y + animatedRadius + 8,
+      barWidth,
+      barHeight
+    );
+    ctx.fillStyle = colors.energyBar;
+    ctx.fillRect(
+      planet.x - animatedRadius,
+      planet.y + animatedRadius + 8,
+      barWidth * energyPercentage,
+      barHeight
+    );
+
+    ctx.globalAlpha = 1;
+  };
+
+  const drawRocket = (ctx, x, y, angle) => {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle + Math.PI / 2); // Rotate an additional 90 degrees
+    ctx.drawImage(rocketImage.current, -15, -15, 30, 30);
+    ctx.restore();
+  };
 
   const handleClick = (event, canvas) => {
     const rect = canvas.getBoundingClientRect();
@@ -82,13 +236,10 @@ const Canvas = () => {
         selectedPlanet
       );
       setIsAttacking(true);
-      const animCircle = {
+      setRocketPosition({
         x: selectedAttackingPlanet.x,
         y: selectedAttackingPlanet.y,
-        radius: 5,
-        fill: approximateEnergy <= energy ? "white" : "red",
-      };
-      setAnimationCircle(animCircle);
+      });
 
       // Simulate the animation
       const animationDuration = 2000; // 2 seconds
@@ -99,20 +250,22 @@ const Canvas = () => {
         const elapsedTime = currentTime - startTime;
         const progress = Math.min(elapsedTime / animationDuration, 1);
 
-        animCircle.x =
-          selectedAttackingPlanet.x +
-          progress * (selectedPlanet.x - selectedAttackingPlanet.x);
-        animCircle.y =
-          selectedAttackingPlanet.y +
-          progress * (selectedPlanet.y - selectedAttackingPlanet.y);
-
-        setAnimationCircle({ ...animCircle });
+        setRocketPosition({
+          x:
+            selectedAttackingPlanet.x +
+            progress * (selectedPlanet.x - selectedAttackingPlanet.x),
+          y:
+            selectedAttackingPlanet.y +
+            progress * (selectedPlanet.y - selectedAttackingPlanet.y),
+        });
 
         if (progress < 1) {
           requestAnimationFrame(animate);
         } else {
-          setAnimationCircle(null);
+          setRocketPosition(null);
           if (actualRequiredEnergy <= energy) {
+            setExplosion({ x: selectedPlanet.x, y: selectedPlanet.y });
+            setTimeout(() => setExplosion(null), 1000); // Remove explosion after 1 second
             setCapturedPlanets([
               ...capturedPlanets,
               { ...selectedPlanet, energy: 0 },
@@ -142,131 +295,67 @@ const Canvas = () => {
   const draw = (canvas, ctx) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw the semi-circle on the extreme right
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, "#0A0E29");
+    gradient.addColorStop(1, "#1A1B41");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw animated background stars
+    drawBackgroundStars(ctx);
+
+    // // Draw stars
+    // for (let i = 0; i < 200; i++) {
+    //   ctx.fillStyle = colors.stars[i % colors.stars.length];
+    //   ctx.beginPath();
+    //   ctx.arc(
+    //     Math.random() * canvas.width,
+    //     Math.random() * canvas.height,
+    //     Math.random() * 2,
+    //     0,
+    //     Math.PI * 2
+    //   );
+    //   ctx.fill();
+    // }
+
+    // Draw the home base (semi-circle on the extreme right)
     ctx.beginPath();
     ctx.arc(
       canvas.width,
       canvas.height / 2,
-      70,
-      (Math.PI / 180) * 90,
-      (Math.PI / 180) * 270,
+      80,
+      Math.PI / 2,
+      (3 * Math.PI) / 2,
       false
     );
-    ctx.fillStyle = "red";
-    ctx.shadowColor = "red";
-    ctx.shadowBlur = 150;
-    ctx.shadowOpacity = 0.5;
+    ctx.fillStyle = colors.homePlanet;
     ctx.fill();
-    ctx.closePath();
-
-    // Draw captured planets
-    capturedPlanets.forEach((planet, index) => {
-      if (planet === homePlanet) {
-        ctx.beginPath();
-        ctx.arc(
-          0,
-          canvas.height / 2,
-          70,
-          (Math.PI / 180) * 270,
-          (Math.PI / 180) * 90,
-          false
-        );
-        ctx.fillStyle = "yellow";
-        ctx.shadowColor = "yellow";
-        ctx.shadowBlur = 150;
-        ctx.shadowOpacity = 0.5;
-        ctx.fill();
-        ctx.closePath();
-      } else {
-        ctx.beginPath();
-        ctx.arc(
-          planet.x,
-          planet.y,
-          10 + planet.defensePower / 10 + 8,
-          0,
-          Math.PI * 2,
-          false
-        );
-        ctx.strokeStyle = "yellow";
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.2;
-        ctx.shadowColor = "yellow";
-        ctx.shadowBlur = 150;
-        ctx.shadowOpacity = 0.5;
-        ctx.stroke();
-        ctx.closePath();
-
-        ctx.beginPath();
-        ctx.arc(
-          planet.x,
-          planet.y,
-          10 + planet.defensePower / 10,
-          0,
-          Math.PI * 2,
-          false
-        );
-        ctx.fillStyle = "yellow";
-        ctx.shadowColor = "yellow";
-        ctx.shadowBlur = 150;
-        ctx.shadowOpacity = 0.5;
-        ctx.globalAlpha = 1;
-        ctx.fill();
-        ctx.closePath();
-      }
-    });
 
     // Draw planets
     planets.forEach((planet) => {
-      ctx.beginPath();
-      ctx.arc(
-        planet.x,
-        planet.y,
-        (10 + planet.defensePower + planet.attackingPower) / 10 + 10,
-        0,
-        Math.PI * 2,
-        false
-      );
-      ctx.strokeStyle = planet.captured ? "yellow" : "lightblue";
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = 0.1;
-      ctx.shadowColor = "white";
-      ctx.shadowBlur = 100;
-      ctx.shadowOpacity = 0.5;
-      ctx.stroke();
-      ctx.closePath();
-
-      ctx.beginPath();
-      ctx.arc(
-        planet.x,
-        planet.y,
-        (10 + planet.defensePower + planet.attackingPower) / 10,
-        0,
-        Math.PI * 2,
-        false
-      );
-      ctx.fillStyle = planet.captured ? "yellow" : "lightblue";
-      ctx.strokeStyle = selectedPlanet === planet ? "blue" : "yellow";
-      ctx.lineWidth = planet.captured ? 3 : 1;
-      ctx.globalAlpha = 1;
-      ctx.fill();
-      ctx.stroke();
-      ctx.closePath();
+      drawPlanet(ctx, planet, planet === selectedPlanet, planet.captured);
     });
 
-    // Draw animation circle
-    if (animationCircle) {
-      ctx.beginPath();
-      ctx.arc(
-        animationCircle.x,
-        animationCircle.y,
-        animationCircle.radius,
-        0,
-        Math.PI * 2,
-        false
+    // Draw home planet
+    drawPlanet(ctx, homePlanet, homePlanet === selectedAttackingPlanet, true);
+
+    if (rocketPosition && rocketImage.current) {
+      const angle = Math.atan2(
+        selectedPlanet.y - selectedAttackingPlanet.y,
+        selectedPlanet.x - selectedAttackingPlanet.x
       );
-      ctx.fillStyle = animationCircle.fill;
-      ctx.fill();
-      ctx.closePath();
+      drawRocket(ctx, rocketPosition.x, rocketPosition.y, angle);
+    }
+
+    // Draw explosion
+    if (explosion && explosionImage.current) {
+      ctx.drawImage(
+        explosionImage.current,
+        explosion.x - 30,
+        explosion.y - 30,
+        60,
+        60
+      );
     }
 
     // Draw line between selected planets
@@ -274,31 +363,31 @@ const Canvas = () => {
       ctx.beginPath();
       ctx.moveTo(selectedAttackingPlanet.x, selectedAttackingPlanet.y);
       ctx.lineTo(selectedPlanet.x, selectedPlanet.y);
-      ctx.strokeStyle = "white";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
       ctx.lineWidth = 2;
-      ctx.globalAlpha = 1;
+      ctx.setLineDash([5, 5]);
       ctx.stroke();
-      ctx.closePath();
+      ctx.setLineDash([]);
 
       // Draw distance text
-      ctx.fillStyle = "white";
-      ctx.font = "14px Arial";
+      ctx.fillStyle = colors.text;
+      ctx.font = "14px 'Press Start 2P', cursive";
+      const distance = Math.sqrt(
+        Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
+          Math.pow(selectedAttackingPlanet.y - selectedPlanet.y, 2)
+      ).toFixed(0);
       ctx.fillText(
-        `Distance: ${Math.sqrt(
-          Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
-            Math.pow(selectedAttackingPlanet.y - selectedPlanet.y, 2)
-        ).toFixed(2)}`,
+        `Distance: ${distance}`,
         (selectedAttackingPlanet.x + selectedPlanet.x) / 2,
-        (selectedAttackingPlanet.y + selectedPlanet.y) / 2
+        (selectedAttackingPlanet.y + selectedPlanet.y) / 2 - 10
       );
     }
   };
 
-  const renderCanvas = (canvas) => {
+ const renderCanvas = (canvas) => {
     if (!canvas) return;
+    canvasRef.current = canvas;
     const ctx = canvas.getContext("2d");
-
-    // Attach click event listener to the canvas
     canvas.addEventListener("click", (event) => handleClick(event, canvas));
 
     draw(canvas, ctx);
@@ -308,41 +397,89 @@ const Canvas = () => {
     <div className="relative">
       <CanvasWrapper>{renderCanvas}</CanvasWrapper>
       {selectedPlanet && selectedAttackingPlanet && (
-        <div className="absolute bottom-10 left-10 p-4 bg-gray-800 text-white rounded">
-          <h2>Planet Info</h2>
-          <p>
-            Distance:{" "}
-            {Math.sqrt(
-              Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
-                Math.pow(selectedAttackingPlanet.y - selectedPlanet.y, 2)
-            ).toFixed(2)}
-          </p>
-          <p>Base Energy: {selectedPlanet.baseEnergy}</p>
+        <div className="absolute bottom-10 left-10 p-6 bg-indigo-900 bg-opacity-80 text-white rounded-lg shadow-lg border-2 border-blue-400">
+          <h2 className="text-xl font-bold mb-3 text-yellow-400">
+            Planet Intel
+          </h2>
+          <div className="flex items-center mb-2">
+            <Crosshair className="mr-2 text-red-400" />
+            <p>
+              Distance:{" "}
+              <span className="font-semibold text-green-400">
+                {Math.sqrt(
+                  Math.pow(selectedAttackingPlanet.x - selectedPlanet.x, 2) +
+                    Math.pow(selectedAttackingPlanet.y - selectedPlanet.y, 2)
+                ).toFixed(2)}
+              </span>
+            </p>
+          </div>
+          <div className="flex items-center mb-2">
+            <Zap className="mr-2 text-yellow-400" />
+            <p>
+              Base Energy:{" "}
+              <span className="font-semibold text-green-400">
+                {selectedPlanet.baseEnergy}
+              </span>
+            </p>
+          </div>
           {selectedPlanet.captured && (
             <>
-              <p>Defense Power: {selectedPlanet.defensePower}</p>
-              <p>Attacking Power: {selectedPlanet.attackingPower}</p>
+              <div className="flex items-center mb-2">
+                <Shield className="mr-2 text-blue-400" />
+                <p>
+                  Defense Power:{" "}
+                  <span className="font-semibold text-green-400">
+                    {selectedPlanet.defensePower}
+                  </span>
+                </p>
+              </div>
+              <div className="flex items-center mb-2">
+                <Rocket className="mr-2 text-red-400" />
+                <p>
+                  Attacking Power:{" "}
+                  <span className="font-semibold text-green-400">
+                    {selectedPlanet.attackingPower}
+                  </span>
+                </p>
+              </div>
             </>
           )}
           <button
-            className="mt-2 px-4 py-2 bg-green-500 rounded"
+            className="mt-4 px-6 py-3 bg-red-600 hover:bg-red-700 rounded-full transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center"
             onClick={handleConquer}
           >
-            Conquer
+            <Rocket className="mr-2" /> Launch Attack
           </button>
         </div>
       )}
-      <div className="absolute top-10 right-10 p-4 bg-gray-800 text-white rounded">
-        <h2>Player Energy: {energy}</h2>
+      <div className="absolute top-10 right-10 p-6 bg-indigo-900 bg-opacity-80 text-white rounded-lg shadow-lg border-2 border-green-400">
+        <h2 className="text-xl font-bold mb-3 text-green-400">
+          Command Center
+        </h2>
+        <div className="flex items-center mb-3">
+          <Zap className="mr-2 text-yellow-400" />
+          <p className="text-lg">
+            Energy:{" "}
+            <span className="font-semibold text-yellow-400">{energy}</span>
+          </p>
+        </div>
         <button
-          className="mt-2 px-4 py-2 bg-blue-500 rounded"
+          className="mt-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-full transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center"
           onClick={increaseEnergy}
         >
-          Increase Energy
+          <Zap className="mr-2" /> Boost Energy
         </button>
       </div>
-      <div className="absolute top-10 left-10 p-4 bg-gray-800 text-white rounded">
-        <h2>Timer: {timer} seconds</h2>
+      <div className="absolute top-10 left-10 p-6 bg-indigo-900 bg-opacity-80 text-white rounded-lg shadow-lg border-2 border-red-400">
+        <h2 className="text-xl font-bold text-red-400">Mission Timer</h2>
+        <p className="text-3xl font-bold mt-2">
+          {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, "0")}
+        </p>
+      </div>
+      <div className="absolute bottom-10 right-10 p-4 bg-indigo-900 bg-opacity-80 text-white rounded-lg shadow-lg border-2 border-yellow-400">
+        <h2 className="text-lg font-bold text-yellow-400 mb-2">Game Stats</h2>
+        <p>Planets Captured: {capturedPlanets.length}</p>
+        <p>Total Planets: {planets.length + 1}</p>
       </div>
     </div>
   );
